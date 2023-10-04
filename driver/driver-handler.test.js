@@ -1,12 +1,17 @@
-const eventPool = require('../eventPool');
 const driverModule = require('./handler');
 
-// Create mock functions for console.log and eventPool.emit
+// Create mock functions for console.log and socket.emit
 const mockConsoleLog = jest.spyOn(console, 'log');
-const mockEventPoolEmit = jest.spyOn(eventPool, 'emit');
+const mockSocketEmit = jest.spyOn(driverModule.socket, 'emit');
 
-// Define your test case
-test('Driver module handles pickup event correctly', () => {
+// Reset the mock functions before each test
+beforeEach(() => {
+  mockConsoleLog.mockClear();
+  mockSocketEmit.mockClear();
+});
+
+// Test cases for event handler functions
+test('handlePickupEvent should log "picked up" and emit "in-transit" and "delivered" events', () => {
   // Define a sample payload for testing
   const pickupPayload = {
     store: 'Test Store',
@@ -20,10 +25,12 @@ test('Driver module handles pickup event correctly', () => {
 
   // Check if the driver module logs and emits events correctly
   expect(mockConsoleLog).toHaveBeenCalledWith(`DRIVER: picked up ${pickupPayload.orderId}`);
-  expect(mockEventPoolEmit).toHaveBeenCalledWith('in-transit', pickupPayload);
+  expect(mockSocketEmit).toHaveBeenCalledWith('in-transit', pickupPayload);
   expect(mockConsoleLog).toHaveBeenCalledWith(`DRIVER: delivered ${pickupPayload.orderId}`);
-  expect(mockEventPoolEmit).toHaveBeenCalledWith('delivered', pickupPayload);
+  expect(mockSocketEmit).toHaveBeenCalledWith('delivered', pickupPayload);
 });
+
+// You can add more test cases for other event handler functions as needed
 
 
 
