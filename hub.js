@@ -1,40 +1,58 @@
-// hub.js
+const http = require('http'); // Import the HTTP module
+const io = require('socket.io'); // Import Socket.io
+const server = http.createServer(); // Create an HTTP server
 
-const eventPool = require('./eventPool');
-const Chance = require('chance');
-const chance = new Chance();
-
-// Event handler functions
-const pickupEventHandler = (payload) => {
-  console.log(`Received a pickup event:`, payload);
-  eventPool.emit('pickup', payload);
-};
-
-const inTransitEventHandler = (payload) => {
-  console.log(`Received an in-transit event:`, payload);
-  eventPool.emit('in-transit', payload);
-};
-
-const deliveredEventHandler = (payload) => {
-  console.log(`Received a delivered event:`, payload);
-  eventPool.emit('delivered', payload);
-};
-
-// Notification to Stakeholders
-eventPool.on('delivered', (payload) => {
-  const vendorName = chance.company();
-  console.log(`Notifying ${vendorName} that the package has been delivered.`);
+// Create a Socket.io server and attach it to the HTTP server
+const socketIoServer = io(server, {
+  cors: {
+    origin: '*',
+  },
 });
 
-// Error Handling
-eventPool.on('error', (error) => {
-  console.error(`An error occurred:`, error);
-  const adminEmail = chance.email();
-  console.log(`Sending alert to ${adminEmail}: An error occurred in the CAPS system: ${error.message}`);
+const capsNamespace = socketIoServer.of('/caps');
+
+const vendorRooms = new Map();
+
+capsNamespace.on('connection', (socket) => {
+  socket.on('pickup', (payload) => {
+    socket.broadcast.emit('pickup', payload);
+  });
+
+  socket.on('in-transit', (payload) => {
+    const vendorRoom = vendorRooms.get(payload.store);
+    if (vendorRoom) {
+      socket.to(vendorRoom).emit('in-transit', payload);
+    }
+  });
+
+  socket.on('delivered', (payload) => {
+    const vendorRoom = vendorRooms.get(payload.store);
+    if (vendorRoom) {
+      socket.to(vendorRoom).emit('delivered', payload);
+    }
+  });
+
+  socket.on('join', (storeName) => {
+    socket.join(storeName);
+    vendorRooms.set(storeName, storeName);
+  });
 });
 
+// Start the HTTP server on port 3001
+server.listen(3001, () => {
+  console.log('Socket.io server is running on port 3001');
+});
+
+// Export the event handlers
 module.exports = {
-  pickupEventHandler,
-  inTransitEventHandler,
-  deliveredEventHandler,
+  pickupEventHandler: (payload) => {
+    // Your pickup event handling logic here
+  },
+  inTransitEventHandler: (payload) => {
+    // Your in-transit event handling logic here
+  },
+  deliveredEventHandler: (payload) => {
+    // Your delivered event handling logic here
+  },
 };
+

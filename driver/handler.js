@@ -1,11 +1,13 @@
-const eventPool = require('../eventPool');
+const io = require('socket.io-client');
 
-function handlePickupEvent(payload) {
+// Connect to the Socket.io server running on port 3001
+const socket = io.connect('http://localhost:3001/caps');
+
+socket.on('pickup', (payload) => {
   console.log(`DRIVER: picked up ${payload.orderId}`);
-  eventPool.emit('in-transit', payload);
+
+  socket.emit('in-transit', payload);
   console.log(`DRIVER: delivered ${payload.orderId}`);
-  eventPool.emit('delivered', payload);
-}
 
-module.exports = { handlePickupEvent }; // Export the function
-
+  socket.emit('delivered', payload);
+});
